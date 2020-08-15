@@ -191,7 +191,6 @@ def draw(canvas):
 
     frames = [rocket_1, rocket_2]
     curses.curs_set(False)
-    #row, column = (5, 20)
     x_max, y_max = canvas.getmaxyx()
     canvas.border()
     coroutines = coroutine_maker(canvas, x_max, y_max)
