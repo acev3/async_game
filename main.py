@@ -12,14 +12,6 @@ RIGHT_KEY_CODE = 261
 UP_KEY_CODE = 259
 DOWN_KEY_CODE = 258
 
-with open("sprites/rocket_frame_1.txt", "r") as my_file:
-    rocket_1 = my_file.read()
-
-with open("sprites/rocket_frame_2.txt", "r") as my_file:
-    rocket_2 = my_file.read()
-
-frames = [rocket_1, rocket_2]
-
 def read_controls(canvas):
     """Read keys pressed and returns tuple witl controls state."""
 
@@ -92,7 +84,7 @@ def get_frame_size(text):
     return rows, columns
 
 async def animate_spaceship(canvas, start_row, start_column, frames):
-    x_max, y_max = canvas.getmaxyx()
+    height, width = canvas.getmaxyx()
     for text in cycle(frames):
         draw_frame(canvas, start_row, start_column, text, negative=False)
         await asyncio.sleep(0)
@@ -102,13 +94,13 @@ async def animate_spaceship(canvas, start_row, start_column, frames):
         row_add, column_add = get_frame_size(text)
         start_row += rows_direction
         start_column += columns_direction
-        if start_row <=0:
+        if start_row <0:
             start_row -= rows_direction
-        if start_row + row_add >= x_max:
+        elif start_row + row_add >= height:
             start_row -=rows_direction
         if start_column <=0:
             start_column -= columns_direction
-        if start_column + column_add >= y_max:
+        elif start_column + column_add >= width:
             start_column -= columns_direction
 
 
@@ -141,45 +133,37 @@ async def fire(canvas, start_row, start_column, rows_speed=-0.3, columns_speed=0
         row += rows_speed
         column += columns_speed
 
-async def blink(canvas, row, column, symbol='*'):
-    rand = random.randint(0,31)
+async def blink(canvas, row, column, offset_tics, symbol='*'):
     while True:
         canvas.addstr(row, column, symbol, curses.A_DIM)
-        for _ in range(20):
-            await asyncio.sleep(0)
-        for _ in range(rand):
+        for _ in range(offset_tics):
             await asyncio.sleep(0)
 
         canvas.addstr(row, column, symbol)
-        for _ in range(3):
-            await asyncio.sleep(0)
-        for _ in range(rand):
+        for _ in range(offset_tics):
             await asyncio.sleep(0)
 
         canvas.addstr(row, column, symbol, curses.A_BOLD)
-        for _ in range(5):
-            await asyncio.sleep(0)
-        for _ in range(rand):
+        for _ in range(offset_tics):
             await asyncio.sleep(0)
 
         canvas.addstr(row, column, symbol)
-        for _ in range(3):
-            await asyncio.sleep(0)
-        for _ in range(rand):
+        for _ in range(offset_tics):
             await asyncio.sleep(0)
 
 def coroutine_maker(canvas, x_max, y_max):
-    number_stars = random.randint(50,200)
+    stars_number = random.randint(50,200)
     symbols = ['*', "+", ".", ":"]
-    d = {}
-    for i in range(0,number_stars):
-        x_random = random.randint(2, x_max-2)
-        y_random = random.randint(2, y_max-2)
+    stars_dictionary = {}
+    for i in range(0,stars_number):
+        random_x = random.randint(2, x_max-2)
+        random_y = random.randint(2, y_max-2)
         rand_symbol = random.choice(symbols)
-        d["star_{0}".format(i)] = blink(canvas, x_random, y_random, symbol=rand_symbol)
+        offset_tics = random.randint(1, 30)
+        stars_dictionary["star_{0}".format(i)] = blink(canvas, random_x, random_y, offset_tics, symbol=rand_symbol)
     coroutines = []
-    for key in d.keys():
-        coroutines.append(d[key])
+    for key in stars_dictionary.keys():
+        coroutines.append(stars_dictionary[key])
     return coroutines
 
 def draw(canvas):
@@ -189,16 +173,17 @@ def draw(canvas):
     with open("sprites/rocket_frame_2.txt", "r") as my_file:
         rocket_2 = my_file.read()
 
-    frames = [rocket_1, rocket_2]
+    frames = [rocket_1, rocket_1, rocket_2, rocket_2]
     curses.curs_set(False)
-    x_max, y_max = canvas.getmaxyx()
+    # getmaxyx() возвращает ширину и высоту окна, а не крайние координаты
+    height, width = canvas.getmaxyx()
     canvas.border()
-    coroutines = coroutine_maker(canvas, x_max, y_max)
-    fire_ball = fire(canvas, x_max/2, y_max/2, rows_speed=-0.3, columns_speed=0)
-    spaceship = animate_spaceship(canvas, x_max/2-0.5, y_max/2-2, frames)
+    coroutines = coroutine_maker(canvas, height, width)
+    fire_ball = fire(canvas, height/2, width/2, rows_speed=-0.3, columns_speed=0)
+    spaceship = animate_spaceship(canvas, height/2-0.5, width/2-2, frames)
     coroutines.append(fire_ball)
     coroutines.append(spaceship)
-    while True:
+    while coroutines:
         for coroutine in coroutines.copy():
             try:
                 coroutine.send(None)
@@ -206,8 +191,6 @@ def draw(canvas):
                 coroutines.remove(coroutine)
         canvas.refresh()
         time.sleep(TIC_TIMEOUT)
-        if len(coroutines) == 0:
-            break
 
 if __name__ == '__main__':
     curses.update_lines_cols()
