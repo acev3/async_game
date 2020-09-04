@@ -84,25 +84,26 @@ def get_frame_size(text):
     return rows, columns
 
 async def animate_spaceship(canvas, start_row, start_column, frames):
+
     height, width = canvas.getmaxyx()
     for text in cycle(frames):
         draw_frame(canvas, start_row, start_column, text, negative=False)
         await asyncio.sleep(0)
         draw_frame(canvas, start_row, start_column, text, negative=True)
-        canvas.nodelay(True)
         rows_direction, columns_direction, space_pressed = read_controls(canvas)
-        row_add, column_add = get_frame_size(text)
+        frame_height, frame_width = get_frame_size(text)
         start_row += rows_direction
         start_column += columns_direction
-        if start_row <0:
-            start_row -= rows_direction
-        elif start_row + row_add >= height:
-            start_row -=rows_direction
+        if start_row <=0:
+            start_row -= start_row -1
+        elif start_row + frame_height >= height:
+            dif = start_row + frame_height - height
+            start_row -= dif +1
         if start_column <=0:
-            start_column -= columns_direction
-        elif start_column + column_add >= width:
-            start_column -= columns_direction
-
+            start_column -= start_column -1
+        elif start_column + frame_width >= width:
+            dif = start_column + frame_width - width
+            start_column -= dif+1
 
 async def fire(canvas, start_row, start_column, rows_speed=-0.3, columns_speed=0):
     """Display animation of gun shot, direction and speed can be specified."""
@@ -133,37 +134,34 @@ async def fire(canvas, start_row, start_column, rows_speed=-0.3, columns_speed=0
         row += rows_speed
         column += columns_speed
 
-async def blink(canvas, row, column, offset_tics, symbol='*'):
+async def blink(canvas, row, column, delay, symbol='*'):
     while True:
         canvas.addstr(row, column, symbol, curses.A_DIM)
-        for _ in range(offset_tics):
+        for _ in range(delay):
             await asyncio.sleep(0)
 
         canvas.addstr(row, column, symbol)
-        for _ in range(offset_tics):
+        for _ in range(delay):
             await asyncio.sleep(0)
 
         canvas.addstr(row, column, symbol, curses.A_BOLD)
-        for _ in range(offset_tics):
+        for _ in range(delay):
             await asyncio.sleep(0)
 
         canvas.addstr(row, column, symbol)
-        for _ in range(offset_tics):
+        for _ in range(delay):
             await asyncio.sleep(0)
 
-def coroutine_maker(canvas, x_max, y_max):
+def create_coroutines(canvas, x_max, y_max, border_width):
     stars_number = random.randint(50,200)
     symbols = ['*', "+", ".", ":"]
-    stars_dictionary = {}
-    for i in range(0,stars_number):
-        random_x = random.randint(2, x_max-2)
-        random_y = random.randint(2, y_max-2)
+    coroutines = []
+    for _ in range(0,stars_number):
+        random_x = random.randint(border_width, x_max-border_width)
+        random_y = random.randint(border_width, y_max-border_width)
         rand_symbol = random.choice(symbols)
         offset_tics = random.randint(1, 30)
-        stars_dictionary["star_{0}".format(i)] = blink(canvas, random_x, random_y, offset_tics, symbol=rand_symbol)
-    coroutines = []
-    for key in stars_dictionary.keys():
-        coroutines.append(stars_dictionary[key])
+        coroutines.append(blink(canvas, random_x, random_y, offset_tics, symbol=rand_symbol))
     return coroutines
 
 def draw(canvas):
@@ -178,7 +176,9 @@ def draw(canvas):
     # getmaxyx() возвращает ширину и высоту окна, а не крайние координаты
     height, width = canvas.getmaxyx()
     canvas.border()
-    coroutines = coroutine_maker(canvas, height, width)
+    canvas.nodelay(True)
+    border_width = 2
+    coroutines = create_coroutines(canvas, height, width, border_width)
     fire_ball = fire(canvas, height/2, width/2, rows_speed=-0.3, columns_speed=0)
     spaceship = animate_spaceship(canvas, height/2-0.5, width/2-2, frames)
     coroutines.append(fire_ball)
