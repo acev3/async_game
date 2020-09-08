@@ -94,16 +94,8 @@ async def animate_spaceship(canvas, start_row, start_column, frames):
         frame_height, frame_width = get_frame_size(text)
         start_row += rows_direction
         start_column += columns_direction
-        if start_row <=0:
-            start_row -= start_row -1
-        elif start_row + frame_height >= height:
-            dif = start_row + frame_height - height
-            start_row -= dif +1
-        if start_column <=0:
-            start_column -= start_column -1
-        elif start_column + frame_width >= width:
-            dif = start_column + frame_width - width
-            start_column -= dif+1
+        start_row = max(1,min(start_row, height - frame_height -1))
+        start_column = max(1,min(start_column, width - frame_width -1))
 
 async def fire(canvas, start_row, start_column, rows_speed=-0.3, columns_speed=0):
     """Display animation of gun shot, direction and speed can be specified."""
@@ -152,13 +144,13 @@ async def blink(canvas, row, column, delay, symbol='*'):
         for _ in range(delay):
             await asyncio.sleep(0)
 
-def create_coroutines(canvas, x_max, y_max, border_width):
+def create_coroutines(canvas, height, width, border_width):
     stars_number = random.randint(50,200)
     symbols = ['*', "+", ".", ":"]
     coroutines = []
     for _ in range(0,stars_number):
-        random_x = random.randint(border_width, x_max-border_width)
-        random_y = random.randint(border_width, y_max-border_width)
+        random_x = random.randint(border_width, height - border_width)
+        random_y = random.randint(border_width, width - border_width)
         rand_symbol = random.choice(symbols)
         offset_tics = random.randint(1, 30)
         coroutines.append(blink(canvas, random_x, random_y, offset_tics, symbol=rand_symbol))
