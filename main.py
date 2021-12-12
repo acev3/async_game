@@ -20,8 +20,7 @@ obstacles = []
 obstacles_in_last_collisions = []
 
 
-async def show_gameover(canvas, row, column):
-    # game over frame    
+async def show_gameover(canvas, row, column):  
     with open("sprites/game_over.txt", "r") as f:
           game_over_frame = f.read()
     while True:
@@ -32,16 +31,10 @@ async def show_gameover(canvas, row, column):
 
 async def blink(canvas, row, column, symbol='*'):
     """Blink functiton for the sky animations"""
-
-    # random pause before start
     ticks_before_start = random.randint(0, 10)
-    # 2 seconds DIM
     ticks_with_dim = 20
-    # 0.3 second original 1
     ticks_with_original_1 = 3
-    # 0.3 second bold
     ticks_with_bold = 3
-    # 0.5 second original 2
     ticks_with_original_2 = 5
 
     while True:
@@ -102,34 +95,26 @@ async def fire(canvas, start_row, start_column, rows_speed=-1, columns_speed=0):
 async def animate_spaceship(canvas, row, column, frames):
     """Spaceship animation with keyboard control and limitts"""
     global coroutines, year
-    # get max size of the canvas
     rows, columns = canvas.getmaxyx()
-    max_row, max_column = rows - 3, columns - 1
+    border_indent_row = 3
+    border_indent_column = 1
+    max_row, max_column = rows - border_indent_row, columns - border_indent_column 
     row_speed, column_speed = 0, 0
 
     while True:
         for frame in frames:
-            # calculate max coordinates for ship
             frame_row, frame_column = get_frame_size(frame)
             row = min(row, max_row - frame_row)
             row = max(1, row)
             column = min(column, max_column -frame_column)
             column = max(1, column)
-
-            # draw frame for 0.2 second
             draw_frame(canvas, row, column, frame, negative=False)
             await sleep(2)
-
-            # erase frame
             draw_frame(canvas, row, column, frame, negative=True)
-
-            # read keyboard and move ship
             rows_direction, columns_direction, fire_press = read_controls(canvas, 1)
             row_speed, column_speed = update_speed(row_speed, column_speed, rows_direction, columns_direction)
             row += row_speed
             column += column_speed
-
-            #animate fire
             if year >= 2020:
                 if fire_press:
                     fire_coroutine = fire(canvas, row-1, column+2)
@@ -146,12 +131,9 @@ async def fly_garbage(canvas, column, garbage_frame, speed=0.5):
     global obstacles, coroutines, obstacles_in_last_collisions
     rows_number, columns_number = canvas.getmaxyx()
     rows_number = rows_number - 4
-
     column = max(column, 0)
     column = min(column, columns_number - 1)
-
     row = 0
-
     row_size, column_size = get_frame_size(garbage_frame)
     obstacle = Obstacle(row, column, row_size, column_size)
     obstacles.append(obstacle)
@@ -214,20 +196,14 @@ async def sub_window_information(window, column):
 
 def draw(canvas):
     """Main fraw functions"""
-
-    # canvas settings
     curses.curs_set(False)
     canvas.nodelay(True)
     canvas.refresh()
-
-    # read frames for the ship
     frames = []
     with open("sprites/rocket_frame_1.txt", "r") as f:
           frames.append(f.read())
     with open("sprites/rocket_frame_2.txt", "r") as f:
           frames.append(f.read())    
-
-    #read frames for the garbage
     garbage_frames = []
     with open("sprites/trash_large.txt", "r") as f:
           garbage_frames.append(f.read())
@@ -235,39 +211,20 @@ def draw(canvas):
           garbage_frames.append(f.read())
     with open("sprites/trash_xl.txt", "r") as f:
           garbage_frames.append(f.read())   
-
-    # canvas sizes
     max_row, max_column = canvas.getmaxyx()
     middle_row = round(max_row/2)
     middle_column = round(max_column/2)
     derived_window = canvas.derwin(max_row-3, 0)
-
-
-    # collect coroutines
     global coroutines
-    
-    # start for the sky
     for _ in range(NUMBER_STARS):
           row = random.randint(1, max_row-4)
           column = random.randint(1, max_column-1)
           star_symbol = random.choice(STARS_SYMBOLS)
           coroutines.append(blink(canvas, row, column,symbol=star_symbol))
-
-    #subwindow
     coroutines.append(sub_window_information(derived_window, middle_column))
-
-
-    # spaceship
     coroutines.append(animate_spaceship(canvas, middle_row, middle_column, frames))
-
-    #garbage
     coroutines.append(fill_orbit_with_garbage(canvas, max_column-1, garbage_frames))
-
-    #update level
     coroutines.append(update_level())
-
-
-    # eventloop
     while True:
         for blinker in coroutines:
             try:
